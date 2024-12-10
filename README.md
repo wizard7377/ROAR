@@ -49,6 +49,7 @@ Z_LOC: .byte
 ```
 ## Outline
 
+Ultimiltiy 
 ### ROAR Goals
 
 ## ROAR Storage and Values
@@ -66,33 +67,31 @@ The most important feature of ROAR is the Abstract Register, which are used to:
 Here, they are notated as a percent sign (`%`) followed by some number, corresponding to the register number. As opposed to computer registers, there are an infinite[^1] amount, so, for instance, `%432432` is a register, albiet one that will probably not be used
 One very importatnt distinction between computer and ROAR registers, *ROAR registers represent presistent data*. This means, that, for example, even if there are 400 operations in between `x=4` and `x`'s next usage, `x` will still be stored in a register. Why the change? To make it easier to optimize code, because a distinction is not drawn between registers and small pieces of memory, we can decide whether to load something into memory or keep it in the computer registers by what is more efficient 
 #### Types
-To put it simply, Abstract Registers are completly untyped, 64 bit wide storage spaces. That is to say, there is nothing in a register itself to say whether the bits (written in hex for brevity) `00 00 00 00 00 00 00 3F` represent the charecter `?`, the unsigned number 63, or the signed number +63. It is entierly the job of operations to say whether they are working on signed or unsigned arguements (with unsigned being assumed herein)
+To put it simply, Abstract Registers are completly untyped, one word wide storage spaces. That is to say, there is nothing in a register itself to say whether the bits (written in hex for brevity) `00 00 00 00 00 00 00 3E` represent the charecter `>`, the unsigned number 62, or the signed number +62. It is entierly the job of operations to say whether they are working on signed or unsigned arguements (with unsigned being assumed herein)
 
-### Abstract Stack 
+> [!NOTE]
+> Words, as used here, the unit of 64 bit, 8 byte, or 16 nibbles (they're all the same size) 
+
+### Abstract Stack (Needs to be redone)
 While most operations only change information in the destination operand, there are two large exceptions, `jmp` and `call`[^2]. In ROAR, it is entierally up to the caller to save registers that will be operated on, that is to say, if `%3` is some value before a call, you should not expect it to be the same value after the call!
 To solve this, one should use the *abstract stack* to "save" registers that one wants to persist across changes in code location
 This is the only use of the abstract stack in ROAR, however. Call sites and returns are abstracted away in the instructions of `call` and `ret`, and arguements should be passed in registers, not on the stack
 
-### Structure Registers
-There is one final thing to talk about, and that is structured memory. That is to say, representing information that contains a number of bytes. While it is technically possible to do this with just a large amount of registers, it would mean that for each time that we want to preserve the value across a call, it would take $2* \frac{Bytes}{8}$ instruction for each such call.
-To solve this, we use "structure registers". The reason that this is in quotes is for a number of reasons. Firstly, these are not at all like regular registers. For one, they need to be created before they can be used, and they can't be inputs *or* outputs to operations.
-So then how are these useful? Well, to create a structure of size of let's say 256 bytes (2048 bits), we write `create $2048 %0`. What this instruction does is allocates 800 bits of memory, and then stores a "refrence" to that in register 0.
-Why this choice? Because it is very unlikely that we will be storing all 256 bytes (indeed, we would have to be using 16 registers to do so) we don't need to be able to talk about each of the bytes individually, so instead we just treat it like a region of memory, which most likely because of the inefficency of moving a large number of bytes will most likely *speed up* rather then slow down our resulting machine code
-
-> [!IMPORTANT]
-> Maybe also add a `LEA` instruction so we can do efficent indexing and passing to registers
-
-Then, when we want to read, say, byte 97 of this structure into register 2, we write `mov [%0+$97] %2`, which is just indirect adressing[^3]. In the abstract machine, it is invalid to take something that was not given as a structure refrence and try and get its value
-Note that `mov %0 %1`, `mov [%0] %1`, `mov %0 [%1]` and `mov [%0] [%1]` all mean diffrent things (assuming that both registers 0 and 1 are structure refrences)
-- `mov %0 %1` means "make register 1 a refrence to whatever register zero is a refrence to"
-- `mov [%0] %1` means "set register 1 to the first 8 bytes of the structure which is refered to by register 0
-- `mov %0 [%1]` means "set the first 8 bytes in the structure refered to by register 1 to the refrence to the structure refered to by structure 0"
-- `mov [%0] [%1]` means "set the first 8 bytes of the structure refered to by reigster 1 to the first 8 bytes of the structure refered to by register 0
+### Structure Registers (Very much in progress)
+While most things can be represented by Abstract Registers, some things cannot. One of the most important things that cannot be easily modeled by them are structures, those are data that does not fit into a small number of words. To create a structure register, one uses the instruction `create A`, where `A` stores a "refrence" to the register. Similar to refrences in high-level languages, rather than passing around the structure itself, we just pass a refrence stored in a given register to that structure 
+There are three main instructions that use refrences to structure registers (apart from create), those being `load`, `store`, and `copy`. These are all just variations on the `mov` instruction, just specified to structs, as a quick list, where `A -> B` means "B being set to A":
+- `load` is for `Structure -> Register`
+- `store` is for `Register -> Structure`
+- `copy` is for `Structure -> Structure`
 
 # TODO (This document)
-- [ ] : Talk about calls and function blocks
-- [ ] : Talk about IO
+- [ ] : Redo section on Abstract Stack
+- [ ] : Finish section on Structure Registers 
+- [ ] : Work on outline 
+- [ ] : Work on goals
+- [ ] : Make something about the assembly just being a representation of the Rust implementation 
 - [ ] : Talk about jumps and flags
+- [ ] : Add section on actual optimizations done
 - [ ] : Probaly some other stuff I forgot
 
 
