@@ -90,13 +90,18 @@ One very importatnt distinction between computer and ROAR registers, *ROAR regis
 #### Types
 To put it simply, Abstract Registers are completly untyped, one word wide storage spaces. That is to say, there is nothing in a register itself to say whether the bits (written in hex for brevity) `00 00 00 00 00 00 00 3E` represent the charecter `>`, the unsigned number 62, or the signed number +62. It is entierly the job of operations to say whether they are working on signed or unsigned arguements (with unsigned being assumed herein)
 
+### The Null Register
+All operations in ROAR must take a destination register. The reasoning behind this is that it makes it easier to optimize if all instructions uniformly modify one thing, and that thing is easily accessible to Roc. However, certain operations either sometimes or always don't produce either in a specific case or always a specific value. For instance, if one wants to compare two integers, you want to set *flags* as if subtraction is happening but not actually produce any value. This is where the null register, here written `_`, comes in. It is used when one wants to either throw out the result of an operation, or the operation dosen't produce anything meaniful in the first place, so, for instance, `_ <- sub %0 %1` could be thought of as `cmp %0 %1`. Apart from just flag-setting instructions, certain instructions should *always* output to the null register, some of them are:
+- `ret`
+- `jmp` and it's derivatives 
+- `store` 
 ### Structure Registers (Very much in progress)
 While most things can be represented by Abstract Registers, some things cannot. One of the most important things that cannot be easily modeled by them are structures, those are data that does not fit into a small number of words. To create a structure register, one uses the instruction `%n <- create`, where `%n` stores a "refrence" to the register. Similar to refrences in high-level languages, rather than passing around the structure itself, we just pass a refrence stored in a given register to that structure. In addition, here sometimes `@n` will be used instead of `%n` for registers that store structure refrences for clarity  
 There are three main instructions that use refrences to structure registers (apart from create), those being `load`, `store`, and `copy`. These are all just variations on the `mov` instruction, just specified to structs, as a quick list, where `A -> B` means "B being set to A":
 - `load` is for `Structure -> Register`
 - `store` is for `Register -> Structure`
 - `copy` is for `Structure -> Structure`
-Note that the forms of load and store are not just `%1 <- load @0` and `() <- store @0 %1`, but rather `%1 <- load @0 %2` and `() <- store @0 %2 %1`. `%2` is the offset and these instructions use indirect addressing (note that alignment may not be specified, the offset is always in bytes). The `copy` operation takes in total 6 arguemnts (although one of these is an unused null register) of the form `() <- @0 %1 @2 %3 %4`, the offsets are covered before, and `%4` is a size arguement, basically saying "copy this many bytes from `@2` to `@0`
+Note that the forms of load and store are not just `%1 <- load @0` and `_ <- store @0 %1`, but rather `%1 <- load @0 %2` and `_ <- store @0 %2 %1`. `%2` is the offset and these instructions use indirect addressing (note that alignment may not be specified, the offset is always in bytes). The `copy` operation takes in total 6 arguemnts (although one of these is an unused null register) of the form `_ <- @0 %1 @2 %3 %4`, the offsets are covered before, and `%4` is a size arguement, basically saying "copy this many bytes from `@2` to `@0`
 
 > [!NOTE]
 > You may have noticed that the `store` and `copy` don't take a (useful) destination register, why is that? Because destination registers only serve to mark data that is being modified, and in the case of these instructions, the refrences themselves are not being modified, rather what's being modified are the things they are refereing to
@@ -108,6 +113,11 @@ ROAR instructions were intended to be both
 
 ### Function Calls 
 ROAR is designed to work with descrete sets of instructions, usually individual functions. To call other functions in ROAR, the `call` instruction is used. The `call` instruction can take a variable number of arguements, but must always take at least one, that being the identifier of the function being called. It may then take one output register to store the return value in and some arguement registers that are then passed to the function. 
+Note that functions in ROAR must *always* specify the number of arguements they take and where they should be stored, as well as specifying any of them that must be structural refrences. This is due to the fact that ROAR is intended to be hardware agnostic, and therefore must not specify any specific calling convention. 
+All functions return a (potentially useless) value. These are in the function specifed as `ret X`, where X is the value being returned. Returns function similary to those in other languages, no further instructions are executed as control returns to the caller with the value. The value returned with `ret` is simply the output of `call`.
+
+#### Function purity
+One very important abstraction 
 
 ### Jump Instructions 
 TODO
