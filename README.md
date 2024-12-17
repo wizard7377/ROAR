@@ -109,7 +109,7 @@ All operations in ROAR must take a destination register. The reasoning behind th
 - `jmp` and it's derivatives 
 - `store` 
 
-### Structure Registers (Very much in progress)
+### Structure Registers 
 
 While most things can be represented by Abstract Registers, some things cannot. One of the most important things that cannot be easily modeled by them are structures, those are data that does not fit into a small number of words. To create a structure register, one uses the instruction `%n <- create`, where `%n` stores a "refrence" to the register. Similar to refrences in high-level languages, rather than passing around the structure itself, we just pass a refrence stored in a given register to that structure. In addition, here sometimes `@n` will be used instead of `%n` for registers that store structure refrences for clarity  
 
@@ -170,7 +170,7 @@ This is to say, whenever a function call of the form `%0 <- call someFunc %1 %2 
 All of this is abstracted by the single instruction above. The reason for this is that it the calling conventions for machines differ so much that trying to define a more concrete way to specify calls would be either inefficent or incomplete, and therefore this more abstract choice in this case was chosen.
 
 However, this is *not* to say that functions in ROAR don't have *side effects*, only that these don't alter registers. For instance, functions can modify structure registers pointed to by an arguement, as the arguement itself is unchanged (essientally the diffrence between `mut &T` and `&mut T` in Rust)
-
+ROAR does not specif
 The reason for this is to make optimizations simpler. For instance, if we at this example:
 ```fsharp
 %0 <- add %1 %2
@@ -178,6 +178,10 @@ The reason for this is to make optimizations simpler. For instance, if we at thi
 _  <- store #8 %2 #0 %0
 ```
 If this is a function, we know by only looking at the first three columns (the outputs) what registers are being modified, and thus if used in the caller must be saved. 
+
+#### Calling Conventions 
+As said before, ROAR does not have a specific calling convention, and instead the calls are made into concrete machine instructions based on the assembly target. So, for instance, `%0 <- call someFunc %1 %2` might represent a completly diffrent set of instructions[^5] on `x86_64` as opposed to `MIPS`, and yet still diffrent from `RISC`, `AARCH64`, and others. Arguebly, this is the most abstract feature of ROAR, the representation of function calls. 
+Another importnat things is that registers are scoped by function, but in practice are often merged. This is to say, if `someFunc` calls `otherFunc`, and both modify `%0`, they are not modifing the same register. However, for the purpose of compile speed, they may be merged into some hardware register, and then when `otherFunc` is called `someFunc` will save the value on the stack and then retrive it after `otherFunc`
 ### Jump Instructions 
 
 Jump functions (and control flow in general) work the same way they do in most architectures. That is to say, there is one basic jump instruction, `jmp`, that always goes to wherever is specifed by the `jmp` instruction. To get conditional jumping, one simple uses flags, which describe the result of the last operation, a feature almost ubiquitous among machines. Some of the jump forms that might be implemented are:
@@ -278,18 +282,10 @@ sequenceDiagram
     end 
 ```
 # TODO (This document)
-- [ ] : Redo section on Abstract Stack
-- [ ] : Finish section on Structure Registers 
-- [x] : Work on outline 
-- [x] : Work on goals
-- [ ] : Word on packing
-- [x] : Make something about the assembly just being a representation of the Rust implementation 
-- [x] : Talk about jumps and flags
-- [ ] : Add section on actual optimizations done
-- [ ] : Probaly some other stuff I forgot
 
 
 [^1]: Not, in practice, actually infinite, instead represented by a integer, mostly likely an unsigned 32 bit integer. However, this *is* more than 4 billion registers, which should be more than enough 
 [^2]: Technincally `jmp` and `call` themselves don't alter the registers, but they *do* cause them to be altered
 [^3]: Because one major feature of ROAR is all things being assumed to be 64 bits, each of these *must* be aligned to the 8 byte mark, so the above is actually equivalent to `mov [%0+$97*8] %2`
 [^4]: Not including structural registers and floating point registers
+[^5]: A diffrent set of semantic instructions. Obviously, the actual opcodes and layouts will vary by architecture
